@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>...</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+html, body {
+    margin: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: "Courier New", monospace;
+}
+
+/* Initial screen */
+#start {
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 100;
+    cursor: pointer;
+}
+
+/* Tiny text before scare */
+#startText {
+    position: absolute;
+    bottom: 30px;
+    width: 100%;
+    text-align: center;
+    color: #111;
+    font-size: 12px;
+}
+
+/* JUMPSCARE */
+#jumpscare {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 90;
+    background: #000;
+    justify-content: center;
+    align-items: center;
+}
+
+#face {
+    font-family: Arial Black, sans-serif;
+    font-size: 28vw;
+    color: #eee;
+    text-shadow:
+        0 0 10px #fff,
+        0 0 35px #0f0,
+        0 0 70px #0f0;
+    animation: violentShake .055s infinite;
+}
+
+@keyframes violentShake {
+    0%   { transform: translate(0,0) scale(1); }
+    20%  { transform: translate(-12px,7px) scale(1.05); }
+    40%  { transform: translate(10px,-8px) scale(.96); }
+    60%  { transform: translate(-8px,-5px) scale(1.04); }
+    80%  { transform: translate(9px,6px) scale(.98); }
+    100% { transform: translate(0,0) scale(1); }
+}
+
+/* Dead display */
+#deadScreen {
+    position: fixed;
+    inset: 0;
+    display: none;
+    background: #000;
+    z-index: 80;
+}
+
+/* Green display lines */
+.line {
+    position: absolute;
+    height: 2px;
+    background: #00ff44;
+    box-shadow:
+        0 0 5px #00ff44,
+        0 0 15px #00ff44;
+    opacity: .8;
+}
+
+.line1 {
+    top: 43%;
+    left: 7%;
+    width: 35%;
+}
+
+.line2 {
+    top: 52%;
+    right: 4%;
+    width: 45%;
+}
+
+.line3 {
+    top: 61%;
+    left: 20%;
+    width: 20%;
+}
+
+/* CRT scanlines */
+#deadScreen::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+        0deg,
+        rgba(0,255,60,.025),
+        rgba(0,255,60,.025) 1px,
+        transparent 1px,
+        transparent 5px
+    );
+    pointer-events: none;
+}
+
+/* Terminal */
+#terminal {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 70;
+    padding: 30px;
+    background: #010301;
+    color: #00ff44;
+    font-size: 17px;
+    line-height: 1.6;
+    overflow: hidden;
+}
+
+.red {
+    color: red;
+}
+
+.warning {
+    color: red;
+    font-size: 23px;
+    animation: blink .2s infinite;
+}
+
+@keyframes blink {
+    50% { opacity: .15; }
+}
+
+.glitch {
+    animation: screenGlitch .08s infinite;
+}
+
+@keyframes screenGlitch {
+    0% { transform: translate(0); filter: none; }
+    25% { transform: translate(-3px,1px); filter: brightness(1.4); }
+    50% { transform: translate(3px,-1px); filter: contrast(1.5); }
+    75% { transform: translate(-1px,-2px); filter: brightness(.6); }
+    100% { transform: translate(0); }
+}
+
+/* Final screen */
+#final {
+    position: fixed;
+    inset: 0;
+    display: none;
+    z-index: 60;
+    background: #000;
+    color: #500;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    text-align: center;
+}
+
+#final h1 {
+    color: #900;
+    font-size: 45px;
+    text-shadow: 0 0 25px red;
+}
+
+#final p {
+    color: #300;
+}
+</style>
+</head>
+
+<body>
+
+<!-- CLICK SCREEN -->
+<div id="start">
+    <div id="startText">CLICK TO CONTINUE</div>
+</div>
+
+<!-- JUMPSCARE -->
+<div id="jumpscare">
+    <div id="face">☠</div>
+</div>
+
+<!-- DEAD DISPLAY -->
+<div id="deadScreen">
+    <div class="line line1"></div>
+    <div class="line line2"></div>
+    <div class="line line3"></div>
+</div>
+
+<!-- SIMULATED TERMINAL -->
+<div id="terminal">
+    <div id="output"></div>
+</div>
+
+<!-- FINAL -->
+<div id="final">
+    <h1>CONNECTION TERMINATED</h1>
+    <p>SESSION CLOSED</p>
+</div>
+
+<audio id="audio" src="scary.mp3" loop></audio>
+
+<script>
+
+const start = document.getElementById("start");
+const scare = document.getElementById("jumpscare");
+const dead = document.getElementById("deadScreen");
+const terminal = document.getElementById("terminal");
+const finalScreen = document.getElementById("final");
+const output = document.getElementById("output");
+const audio = document.getElementById("audio");
+
+/* Terminal messages */
+const messages = [
+    "INITIALIZING...",
+    "ESTABLISHING CONNECTION...",
+    "CONNECTION ESTABLISHED",
+    "",
+    "ANALYZING SESSION...",
+    "CHECKING ENVIRONMENT...",
+    "CHECKING ACTIVE PROCESSES...",
+    "CHECKING NETWORK...",
+    "",
+    "UNUSUAL ACTIVITY DETECTED",
+    "",
+    "SECURITY PROTOCOL: FAILED",
+    "",
+    "SIMULATED ACCESS SEQUENCE",
+    "██████████ 17%",
+    "███████████████ 39%",
+    "████████████████████ 68%",
+    "██████████████████████████ 100%",
+    "",
+    "REMOTE SESSION ACTIVE",
+    "",
+    "DO NOT CLOSE THIS WINDOW.",
+    "",
+    "PROCESSING...",
+    "PROCESSING...",
+    "PROCESSING...",
+    "",
+    "SIMULATED TRANSFER QUEUE CREATED",
+    "",
+    "DESTINATION: BHAGATH",
+    "",
+    "FINALIZING..."
+];
+
+let index = 0;
+
+/* Start after visitor clicks */
+start.addEventListener("click", async () => {
+
+    /* Request fullscreen */
+    try {
+        await document.documentElement.requestFullscreen();
+    } catch (e) {
+        console.log("Fullscreen unavailable");
+    }
+
+    /* Start audio */
+    try {
+        audio.volume = 0.8;
+        await audio.play();
+    } catch (e) {
+        console.log("Audio blocked");
+    }
+
+    start.style.display = "none";
+
+    /* Brief darkness */
+    setTimeout(() => {
+
+        /* Jumpscare */
+        scare.style.display = "flex";
+
+        setTimeout(() => {
+
+            scare.style.display = "none";
+
+            /* Dead-display effect */
+            dead.style.display = "block";
+
+            setTimeout(() => {
+
+                dead.style.display = "none";
+
+                /* Terminal */
+                terminal.style.display = "block";
+                terminal.classList.add("glitch");
+
+                typeLine();
+
+            }, 1800);
+
+        }, 900);
+
+    }, 1200);
+});
+
+
+function typeLine() {
+
+    if (index >= messages.length) {
+
+        setTimeout(() => {
+
+            terminal.style.display = "none";
+            finalScreen.style.display = "flex";
+
+        }, 3000);
+
+        return;
+    }
+
+    const line = document.createElement("div");
+
+    line.textContent = "> " + messages[index];
+
+    if (
+        messages[index].includes("UNUSUAL") ||
+        messages[index].includes("FAILED") ||
+        messages[index].includes("DO NOT") ||
+        messages[index].includes("REMOTE")
+    ) {
+        line.className = "warning";
+    }
+
+    output.appendChild(line);
+
+    index++;
+
+    /* Random typing delay */
+    const delay = Math.random() * 450 + 180;
+
+    setTimeout(typeLine, delay);
+}
+
+</script>
+
+</body>
+</html>
